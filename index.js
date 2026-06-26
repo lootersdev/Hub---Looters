@@ -1,18 +1,22 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, PermissionFlagsBits } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionFlagsBits, Partials } = require('discord.js');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
 const WELCOME_CHANNEL = '1515832946714480842';
+const RULES_CHANNEL = '1515832971071066145';
+const RULES_ROLE = '1515835957713043557';
+const RULES_EMOJI = '✅';
 let PUBLIC_URL = 'http://localhost:' + PORT;
+let rulesMessageId = null;
 
 const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif' };
 const server = http.createServer((req, res) => {
   PUBLIC_URL = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
   if (req.url === '/') return res.end('Bot en ligne');
-  const filePath = path.join(__dirname, 'images', req.url === '/logo.png' ? 'logo/logo.png' : req.url === '/banner.png' ? 'banniere/LOOTERS.png' : req.url === '/umbed.png' ? 'umbed.png' : '');
+  const filePath = path.join(__dirname, 'images', req.url === '/logo.png' ? 'logo/logo.png' : req.url === '/banner.png' ? 'banniere/LOOTERS.png' : req.url === '/umbed.png' ? 'umbed.png' : req.url === '/reglement.png' ? 'reglementpng.png' : '');
   const ext = path.extname(filePath);
   if (filePath.includes('..') || !MIME[ext]) return res.writeHead(404).end();
   fs.readFile(filePath, (err, data) => {
@@ -29,11 +33,53 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessageReactions,
   ],
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
-client.once('clientReady', () => {
+client.once('clientReady', async () => {
   console.log(`✅ Connecté en tant que ${client.user.tag}`);
+  await sendRulesMessage();
+});
+
+async function sendRulesMessage() {
+  const channel = client.channels.cache.get(RULES_CHANNEL);
+  if (!channel) return console.log('❌ Salon règlement introuvable');
+  try {
+    const messages = await channel.messages.fetch({ limit: 10 });
+    const existing = messages.find(m => m.author.id === client.user.id && m.embeds.length > 0);
+    if (existing) {
+      rulesMessageId = existing.id;
+      return;
+    }
+    const msg = await channel.send({
+      embeds: [{
+        color: 0xFFFFFF,
+        image: { url: `${PUBLIC_URL}/reglement.png` },
+      }],
+    });
+    await msg.react(RULES_EMOJI);
+    rulesMessageId = msg.id;
+  } catch (err) {
+    console.error('❌ Erreur envoi règlement :', err);
+  }
+}
+
+client.on('messageReactionAdd', async (reaction, user) => {
+  if (user.bot) return;
+  if (reaction.message.id !== rulesMessageId) return;
+  if (reaction.emoji.name !== RULES_EMOJI) return;
+  const member = reaction.message.guild.members.cache.get(user.id);
+  if (member) await member.roles.add(RULES_ROLE);
+});
+
+client.on('messageReactionRemove', async (reaction, user) => {
+  if (user.bot) return;
+  if (reaction.message.id !== rulesMessageId) return;
+  if (reaction.emoji.name !== RULES_EMOJI) return;
+  const member = reaction.message.guild.members.cache.get(user.id);
+  if (member) await member.roles.remove(RULES_ROLE);
 });
 
 client.on('guildMemberAdd', async (member) => {
