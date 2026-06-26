@@ -54,6 +54,9 @@ client.once('clientReady', async () => {
         new SlashCommandBuilder()
           .setName('mentions-legales')
           .setDescription('Affiche les mentions légales de Looters'),
+        new SlashCommandBuilder()
+          .setName('createur')
+          .setDescription('Affiche les créateurs de Looters'),
       ],
     });
     console.log('✅ Commande /reglement enregistrée');
@@ -104,6 +107,43 @@ client.on('interactionCreate', async (interaction) => {
           },
         ],
         footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
+      }],
+    });
+  }
+
+  if (interaction.commandName === 'createur') {
+    return interaction.reply({
+      embeds: [{
+        color: 0xFFFFFF,
+        title: '👤 Créateurs — Looters',
+        description: 'Bienvenue dans l\'univers Looters.',
+        thumbnail: { url: `${PUBLIC_URL}/logo.png` },
+        fields: [
+          {
+            name: '**Les créateurs**',
+            value: '　',
+          },
+          {
+            name: 'Defouloy Malonn — Créateur de Looters',
+            value: 'J\'ai créé Looters avec l\'objectif de proposer une marque moderne autour des vêtements et accessoires, tout en construisant une communauté active et engagée.',
+          },
+          {
+            name: '@youtsuho — Co-créateur de Looters',
+            value: 'Il participe au développement du projet, à son évolution et à la construction de la communauté Looters.',
+          },
+          {
+            name: '**Notre vision**',
+            value: 'Looters est plus qu\'une simple boutique : c\'est un projet construit autour de la créativité, de la communauté et de l\'envie de proposer des produits qui correspondent aux attentes des membres.\n\nChaque étape du projet est pensée pour évoluer avec sa communauté.',
+          },
+          {
+            name: '**Informations**',
+            value: '🏷️ **Marque :** Looters\n👤 **Créateur :** Defouloy Malonn\n🤝 **Co-créateur :** @youtsuho\n🌐 **Site :** [looters.fr](https://looters.fr)',
+          },
+        ],
+        footer: {
+          text: 'Merci à toutes les personnes qui soutiennent Looters ❤️',
+          iconURL: `${PUBLIC_URL}/logo.png`,
+        },
       }],
     });
   }
@@ -201,6 +241,7 @@ client.on('messageCreate', async (message) => {
           { name: '`/reglement`', value: 'Envoie le message de règlement (Admin)', inline: true },
           { name: '`/site-web`', value: 'Affiche le lien du site Looters', inline: true },
           { name: '`/mentions-legales`', value: 'Affiche les mentions légales', inline: true },
+          { name: '`/createur`', value: 'Affiche les créateurs de Looters', inline: true },
           { name: '　', value: '　', inline: false },
           { name: '__**👮 Modération**__', value: '　', inline: false },
           { name: '`!clear <n>`', value: 'Supprime n messages (1-100)\nNécessite : Gérer les messages', inline: true },
