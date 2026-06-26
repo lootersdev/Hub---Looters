@@ -48,6 +48,9 @@ client.once('clientReady', async () => {
         new SlashCommandBuilder()
           .setName('reglement')
           .setDescription('Envoie le message de règlement avec réaction rôle'),
+        new SlashCommandBuilder()
+          .setName('site-web')
+          .setDescription('Affiche le lien du site web Looters'),
       ],
     });
     console.log('✅ Commande /reglement enregistrée');
@@ -56,6 +59,19 @@ client.once('clientReady', async () => {
 
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'site-web') {
+    return interaction.reply({
+      embeds: [{
+        color: 0xFFFFFF,
+        title: '🌐 Site Web Looters',
+        description: 'Découvre notre site officiel :\n\n🔗 **[looters.fr](https://looters.fr)**',
+        image: { url: `${PUBLIC_URL}/banner.png` },
+        footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
+      }],
+    });
+  }
+
   if (interaction.commandName !== 'reglement') return;
 
   const channel = interaction.guild.channels.cache.get(RULES_CHANNEL);
@@ -135,6 +151,7 @@ client.on('messageCreate', async (message) => {
           { name: '`!ping`', value: 'Affiche la latence du bot', inline: true },
           { name: '`!help`', value: 'Affiche cette liste d\'aide', inline: true },
           { name: '`/reglement`', value: 'Envoie le message de règlement (Admin)', inline: true },
+          { name: '`/site-web`', value: 'Affiche le lien du site Looters', inline: true },
           { name: '　', value: '　', inline: false },
           { name: '__**👮 Modération**__', value: '　', inline: false },
           { name: '`!clear <n>`', value: 'Supprime n messages (1-100)\nNécessite : Gérer les messages', inline: true },
