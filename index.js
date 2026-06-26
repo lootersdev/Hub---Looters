@@ -16,7 +16,7 @@ const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif' };
 const server = http.createServer((req, res) => {
   PUBLIC_URL = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
   if (req.url === '/') return res.end('Bot en ligne');
-  const filePath = path.join(__dirname, 'images', req.url === '/logo.png' ? 'logo/logo.png' : req.url === '/banner.png' ? 'banniere/LOOTERS.png' : req.url === '/umbed.png' ? 'umbed.png' : req.url === '/reglement.png' ? 'reglementpng.png' : '');
+  const filePath = path.join(__dirname, 'images', req.url === '/logo.png' ? 'logo/logo.png' : req.url === '/banner.png' ? 'banniere/LOOTERS.png' : req.url === '/umbed.png' ? 'umbed.png' : req.url === '/reglement.png' ? 'reglementpng.png' : req.url === '/offres.png' ? 'offres.png' : '');
   const ext = path.extname(filePath);
   if (filePath.includes('..') || !MIME[ext]) return res.writeHead(404).end();
   fs.readFile(filePath, (err, data) => {
@@ -57,6 +57,9 @@ client.once('clientReady', async () => {
         new SlashCommandBuilder()
           .setName('createur')
           .setDescription('Affiche les créateurs de Looters'),
+        new SlashCommandBuilder()
+          .setName('offres')
+          .setDescription('Affiche les offres Looters'),
       ],
     });
     console.log('✅ Commande /reglement enregistrée');
@@ -106,6 +109,17 @@ client.on('interactionCreate', async (interaction) => {
             value: '**Entreprise :** Defouloy Malonn\n**Nom commercial :** Looters\n**Site :** [looters.fr](https://looters.fr)',
           },
         ],
+        footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
+      }],
+    });
+  }
+
+  if (interaction.commandName === 'offres') {
+    return interaction.reply({
+      embeds: [{
+        color: 0xFFFFFF,
+        title: '🏷️ Offres Looters',
+        image: { url: `${PUBLIC_URL}/offres.png` },
         footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
       }],
     });
@@ -244,6 +258,7 @@ client.on('messageCreate', async (message) => {
           { name: '`/site-web`', value: 'Affiche le lien du site Looters', inline: true },
           { name: '`/mentions-legales`', value: 'Affiche les mentions légales', inline: true },
           { name: '`/createur`', value: 'Affiche les créateurs de Looters', inline: true },
+          { name: '`/offres`', value: 'Affiche les offres Looters', inline: true },
           { name: '　', value: '　', inline: false },
           { name: '__**👮 Modération**__', value: '　', inline: false },
           { name: '`!clear <n>`', value: 'Supprime n messages (1-100)\nNécessite : Gérer les messages', inline: true },
