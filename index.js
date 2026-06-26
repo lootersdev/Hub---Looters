@@ -51,6 +51,9 @@ client.once('clientReady', async () => {
         new SlashCommandBuilder()
           .setName('site-web')
           .setDescription('Affiche le lien du site web Looters'),
+        new SlashCommandBuilder()
+          .setName('mentions-legales')
+          .setDescription('Affiche les mentions légales de Looters'),
       ],
     });
     console.log('✅ Commande /reglement enregistrée');
@@ -59,6 +62,51 @@ client.once('clientReady', async () => {
 
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'mentions-legales') {
+    return interaction.reply({
+      embeds: [{
+        color: 0xFFFFFF,
+        title: '📌 Mentions légales — Looters',
+        thumbnail: { url: `${PUBLIC_URL}/logo.png` },
+        fields: [
+          {
+            name: '👤 Éditeur du service',
+            value: 'Defouloy Malonn — Entrepreneur individuel\nNom commercial : Looters\nSIREN : 104 615 265\nSIRET : 10461526500014\n\n**Activité :** Vente à distance de vêtements et accessoires\n**Code APE :** 4791B',
+          },
+          {
+            name: '📍 Adresse',
+            value: '77 Rue de la Vendée\n85130 Bazoges-en-Paillers\nFrance\n\n**Immatriculation RNE :** 06/05/2026',
+          },
+          {
+            name: '📢 Responsable de publication',
+            value: 'Defouloy Malonn, représentant de Looters.',
+          },
+          {
+            name: '📋 Objet',
+            value: 'Le serveur Discord Looters est un espace communautaire permettant aux utilisateurs d\'échanger et d\'accéder aux informations liées à la marque et ses services.',
+          },
+          {
+            name: '© Propriété intellectuelle',
+            value: 'Les éléments appartenant à Looters (nom, logo, visuels, contenus) ne peuvent pas être reproduits ou utilisés sans autorisation.',
+          },
+          {
+            name: '⚖️ Responsabilité',
+            value: 'Chaque utilisateur est responsable de ses messages et comportements sur le serveur. Looters ne peut être tenu responsable des contenus publiés par les membres.',
+          },
+          {
+            name: '🔒 Données personnelles',
+            value: 'L\'utilisation de Discord implique le traitement de certaines données par Discord conformément à leur politique de confidentialité. Looters respecte les obligations applicables concernant les données personnelles.',
+          },
+          {
+            name: '📧 Contact',
+            value: '**Entreprise :** Defouloy Malonn\n**Nom commercial :** Looters\n**Site :** [looters.fr](https://looters.fr)',
+          },
+        ],
+        footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
+      }],
+    });
+  }
 
   if (interaction.commandName === 'site-web') {
     return interaction.reply({
@@ -152,6 +200,7 @@ client.on('messageCreate', async (message) => {
           { name: '`!help`', value: 'Affiche cette liste d\'aide', inline: true },
           { name: '`/reglement`', value: 'Envoie le message de règlement (Admin)', inline: true },
           { name: '`/site-web`', value: 'Affiche le lien du site Looters', inline: true },
+          { name: '`/mentions-legales`', value: 'Affiche les mentions légales', inline: true },
           { name: '　', value: '　', inline: false },
           { name: '__**👮 Modération**__', value: '　', inline: false },
           { name: '`!clear <n>`', value: 'Supprime n messages (1-100)\nNécessite : Gérer les messages', inline: true },
