@@ -9,7 +9,7 @@ const WELCOME_CHANNEL = '1515832946714480842';
 const RULES_CHANNEL = '1515832971071066145';
 const RULES_ROLE = '1515835957713043557';
 const RULES_EMOJI = '✅';
-let PUBLIC_URL = 'http://localhost:' + PORT;
+let PUBLIC_URL = process.env.RENDER_EXTERNAL_URL || 'http://localhost:' + PORT;
 let rulesMessageId = null;
 
 const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif' };
@@ -50,6 +50,12 @@ async function sendRulesMessage() {
     const messages = await channel.messages.fetch({ limit: 10 });
     const existing = messages.find(m => m.author.id === client.user.id && m.embeds.length > 0);
     if (existing) {
+      await existing.edit({
+        embeds: [{
+          color: 0xFFFFFF,
+          image: { url: `${PUBLIC_URL}/reglement.png` },
+        }],
+      });
       rulesMessageId = existing.id;
       return;
     }
@@ -68,6 +74,7 @@ async function sendRulesMessage() {
 
 client.on('messageReactionAdd', async (reaction, user) => {
   if (user.bot) return;
+  if (reaction.partial) await reaction.fetch();
   if (reaction.message.id !== rulesMessageId) return;
   if (reaction.emoji.name !== RULES_EMOJI) return;
   const member = reaction.message.guild.members.cache.get(user.id);
@@ -76,6 +83,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
 client.on('messageReactionRemove', async (reaction, user) => {
   if (user.bot) return;
+  if (reaction.partial) await reaction.fetch();
   if (reaction.message.id !== rulesMessageId) return;
   if (reaction.emoji.name !== RULES_EMOJI) return;
   const member = reaction.message.guild.members.cache.get(user.id);
