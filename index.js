@@ -112,6 +112,8 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   if (interaction.commandName === 'createur') {
+    const malonn = await client.users.fetch('1496207431670431778').catch(() => null);
+    const youtsuho = await client.users.fetch('1393019545522012271').catch(() => null);
     return interaction.reply({
       embeds: [{
         color: 0xFFFFFF,
@@ -124,12 +126,12 @@ client.on('interactionCreate', async (interaction) => {
             value: '　',
           },
           {
-            name: 'Defouloy Malonn — Créateur de Looters',
-            value: 'J\'ai créé Looters avec l\'objectif de proposer une marque moderne autour des vêtements et accessoires, tout en construisant une communauté active et engagée.',
+            name: '　',
+            value: malonn ? `**${malonn.username}** — Créateur de Looters\n${malonn}` : 'Defouloy Malonn — Créateur de Looters',
           },
           {
-            name: '@youtsuho — Co-créateur de Looters',
-            value: 'Il participe au développement du projet, à son évolution et à la construction de la communauté Looters.',
+            name: '　',
+            value: youtsuho ? `**${youtsuho.username}** — Co-créateur de Looters\n${youtsuho}` : '@youtsuho — Co-créateur de Looters',
           },
           {
             name: '**Notre vision**',
@@ -137,7 +139,7 @@ client.on('interactionCreate', async (interaction) => {
           },
           {
             name: '**Informations**',
-            value: '🏷️ **Marque :** Looters\n👤 **Créateur :** Defouloy Malonn\n🤝 **Co-créateur :** @youtsuho\n🌐 **Site :** [looters.fr](https://looters.fr)',
+            value: '🏷️ **Marque :** Looters\n👤 **Créateur :** Malonn\n🤝 **Co-créateur :** youtsuho\n🌐 **Site :** [looters.fr](https://looters.fr)',
           },
         ],
         footer: {
