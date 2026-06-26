@@ -12,7 +12,7 @@ const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif' };
 const server = http.createServer((req, res) => {
   PUBLIC_URL = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
   if (req.url === '/') return res.end('Bot en ligne');
-  const filePath = path.join(__dirname, 'images', req.url === '/logo.png' ? 'logo/logo.png' : req.url === '/banner.png' ? 'banniere/LOOTERS.png' : '');
+  const filePath = path.join(__dirname, 'images', req.url === '/logo.png' ? 'logo/logo.png' : req.url === '/banner.png' ? 'banniere/LOOTERS.png' : req.url === '/umbed.png' ? 'umbed.png' : '');
   const ext = path.extname(filePath);
   if (filePath.includes('..') || !MIME[ext]) return res.writeHead(404).end();
   fs.readFile(filePath, (err, data) => {
@@ -41,17 +41,11 @@ client.on('guildMemberAdd', async (member) => {
   const channel = member.guild.channels.cache.get(WELCOME_CHANNEL);
   if (!channel) return;
   await channel.send({
-    content: `Bienvenue sur le serveur, ${member}!`,
+    content: `${member}`,
     embeds: [{
       color: 0xFFFFFF,
-      title: '🎉 Nouveau membre !',
-      thumbnail: { url: member.user.displayAvatarURL({ size: 1024 }) },
-      image: { url: `${PUBLIC_URL}/banner.png` },
-      description: `**${member.user.username}** a rejoint **${member.guild.name}** !`,
-      fields: [
-        { name: '📅 Compte créé le', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:F>`, inline: true },
-        { name: '👥 Membres', value: `${member.guild.memberCount}`, inline: true },
-      ],
+      description: '**Bienvenue à toi !**',
+      image: { url: `${PUBLIC_URL}/umbed.png` },
       footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
     }],
   });
