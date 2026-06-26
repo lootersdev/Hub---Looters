@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
+const WELCOME_CHANNEL = '1515832946714480842';
 let PUBLIC_URL = 'http://localhost:' + PORT;
 
 const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif' };
@@ -27,11 +28,33 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
   ],
 });
 
 client.once('clientReady', () => {
   console.log(`✅ Connecté en tant que ${client.user.tag}`);
+});
+
+client.on('guildMemberAdd', async (member) => {
+  if (member.user.bot) return;
+  const channel = member.guild.channels.cache.get(WELCOME_CHANNEL);
+  if (!channel) return;
+  await channel.send({
+    content: `Bienvenue sur le serveur, ${member}!`,
+    embeds: [{
+      color: 0xFFFFFF,
+      title: '🎉 Nouveau membre !',
+      thumbnail: { url: member.user.displayAvatarURL({ size: 1024 }) },
+      image: { url: `${PUBLIC_URL}/banner.png` },
+      description: `**${member.user.username}** a rejoint **${member.guild.name}** !`,
+      fields: [
+        { name: '📅 Compte créé le', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:F>`, inline: true },
+        { name: '👥 Membres', value: `${member.guild.memberCount}`, inline: true },
+      ],
+      footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
+    }],
+  });
 });
 
 client.on('messageCreate', async (message) => {
