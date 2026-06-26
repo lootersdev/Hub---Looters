@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, PermissionFlagsBits, Partials } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionFlagsBits, Partials, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -40,37 +40,43 @@ const client = new Client({
 
 client.once('clientReady', async () => {
   console.log(`✅ Connecté en tant que ${client.user.tag}`);
-  await sendRulesMessage();
+  const guild = client.guilds.cache.find(g => g.channels.cache.has(RULES_CHANNEL));
+  if (guild) {
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    await rest.put(Routes.applicationGuildCommands(client.user.id, guild.id), {
+      body: [
+        new SlashCommandBuilder()
+          .setName('reglement')
+          .setDescription('Envoie le message de règlement avec réaction rôle'),
+      ],
+    });
+    console.log('✅ Commande /reglement enregistrée');
+  }
 });
 
-async function sendRulesMessage() {
-  const channel = client.channels.cache.get(RULES_CHANNEL);
-  if (!channel) return console.log('❌ Salon règlement introuvable');
-  try {
-    const messages = await channel.messages.fetch({ limit: 10 });
-    const existing = messages.find(m => m.author.id === client.user.id && m.embeds.length > 0);
-    if (existing) {
-      await existing.edit({
-        embeds: [{
-          color: 0xFFFFFF,
-          image: { url: `${PUBLIC_URL}/reglement.png` },
-        }],
-      });
-      rulesMessageId = existing.id;
-      return;
-    }
-    const msg = await channel.send({
-      embeds: [{
-        color: 0xFFFFFF,
-        image: { url: `${PUBLIC_URL}/reglement.png` },
-      }],
-    });
-    await msg.react(RULES_EMOJI);
-    rulesMessageId = msg.id;
-  } catch (err) {
-    console.error('❌ Erreur envoi règlement :', err);
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName !== 'reglement') return;
+
+  const channel = interaction.guild.channels.cache.get(RULES_CHANNEL);
+  if (!channel) return interaction.reply({ content: '❌ Salon règlement introuvable.', ephemeral: true });
+
+  if (rulesMessageId) {
+    const existing = await channel.messages.fetch(rulesMessageId).catch(() => null);
+    if (existing) await existing.delete().catch(() => {});
   }
-}
+
+  const msg = await channel.send({
+    embeds: [{
+      color: 0xFFFFFF,
+      description: 'Clique sur l\'émoji ✅ ci-dessous pour accéder au serveur !',
+      image: { url: `${PUBLIC_URL}/reglement.png` },
+    }],
+  });
+  await msg.react(RULES_EMOJI);
+  rulesMessageId = msg.id;
+  await interaction.reply({ content: '✅ Message de règlement envoyé !', ephemeral: true });
+});
 
 client.on('messageReactionAdd', async (reaction, user) => {
   if (user.bot) return;
@@ -128,6 +134,7 @@ client.on('messageCreate', async (message) => {
           { name: '__**🛠 Utilité**__', value: '　', inline: false },
           { name: '`!ping`', value: 'Affiche la latence du bot', inline: true },
           { name: '`!help`', value: 'Affiche cette liste d\'aide', inline: true },
+          { name: '`/reglement`', value: 'Envoie le message de règlement (Admin)', inline: true },
           { name: '　', value: '　', inline: false },
           { name: '__**👮 Modération**__', value: '　', inline: false },
           { name: '`!clear <n>`', value: 'Supprime n messages (1-100)\nNécessite : Gérer les messages', inline: true },
