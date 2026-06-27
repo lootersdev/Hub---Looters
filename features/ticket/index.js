@@ -108,7 +108,7 @@ module.exports = (client) => {
       parent: categoryId,
       permissionOverwrites: [
         { id: everyoneRole.id, deny: [PermissionFlagsBits.ViewChannel] },
-        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory], deny: [PermissionFlagsBits.SendMessages] },
         ...roleIds.map(id => ({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] })),
       ],
     });
@@ -118,9 +118,11 @@ module.exports = (client) => {
 
     await interaction.reply({ content: `✅ Ticket créé : ${channel}`, ephemeral: true });
 
-    // Bot writes for 10 seconds
+    // Bot typing for 10 seconds
+    const typingInterval = setInterval(() => channel.sendTyping().catch(() => {}), 5000);
     const waitMsg = await channel.send(`📝 **Création du ticket en cours...** ${interaction.user}`);
     await new Promise(r => setTimeout(r, 10000));
+    clearInterval(typingInterval);
     await waitMsg.delete().catch(() => {});
 
     // Show rules embed with reaction
@@ -142,6 +144,8 @@ module.exports = (client) => {
       await rulesMsg.awaitReactions({ filter, max: 1, time: 300000, errors: ['time'] });
       tickets[channel.id].status = 'open';
       saveTickets();
+      // Give send messages permission to opener
+      await channel.permissionOverwrites.edit(interaction.user.id, { SendMessages: true });
       await channel.send(`✅ **Règlement accepté !** ${interaction.user} peut maintenant échanger.`);
       await channel.send(`🔒 Pour demander la fermeture du ticket, clique ci-dessous.`);
       const closeRow = new ActionRowBuilder().addComponents(
