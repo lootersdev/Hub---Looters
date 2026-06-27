@@ -1,5 +1,5 @@
 const CATEGORIES = {
-  support: '1520498049648442587',
+  support: '1520498048449642587',
   commande: '1520498016337789019',
   'suivi-commandes': '1520498250707111946',
   collaborations: '1520498284710330550',
