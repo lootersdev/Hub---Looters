@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionFlagsBits, ChannelType, EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
-const { CATEGORIES, ROLES, MODAL_QUESTIONS, TICKET_NAMES, REVIEW_CHANNEL } = require('./config');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
+const { CATEGORIES, ROLES, TICKET_NAMES, REVIEW_CHANNEL } = require('./config');
 
 const DATA_FILE = path.join(__dirname, 'tickets.json');
 const tickets = (() => { try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { return {}; } })();
@@ -18,21 +18,19 @@ function getTicketType(cmd) {
 module.exports = (client) => {
   client.slashCommands = client.slashCommands || [];
 
-  // Register commands
   const cmds = ['support', 'commande', 'suivi-commandes', 'collaborations', 'avis-ticket', 'fermer-ticket'];
+  const descs = {
+    support: 'Ouvre un ticket de support',
+    commande: 'Ouvre un ticket de commande',
+    'suivi-commandes': 'Ouvre un ticket de suivi de commande',
+    collaborations: 'Ouvre un ticket de collaboration',
+    'avis-ticket': 'Donne un avis sur un ticket (Staff)',
+    'fermer-ticket': 'Ferme un ticket (Staff)',
+  };
   for (const cmd of cmds) {
-    const descs = {
-      support: 'Ouvre un ticket de support',
-      commande: 'Ouvre un ticket de commande',
-      'suivi-commandes': 'Ouvre un ticket de suivi de commande',
-      collaborations: 'Ouvre un ticket de collaboration',
-      'avis-ticket': 'Donne un avis sur un ticket (Staff)',
-      'fermer-ticket': 'Ferme un ticket (Staff)',
-    };
     client.slashCommands.push(new SlashCommandBuilder().setName(cmd).setDescription(descs[cmd]));
   }
 
-  // ── Interaction handler ──
   client.on('interactionCreate', async (interaction) => {
     if (interaction.isChatInputCommand()) {
       const type = getTicketType(interaction.commandName);
@@ -55,7 +53,6 @@ module.exports = (client) => {
     }
   });
 
-  // ── Step 1: Show initial embed ──
   async function handleOpenTicket(interaction, type) {
     const PUBLIC_URL = client.publicURL || 'http://localhost:' + (process.env.PORT || 3000);
     const imageMap = { support: 'umbed-support', commande: 'umbed-commande', 'suivi-commandes': 'umbed-suivi-commande', collaborations: 'umbed-collaborations' };
@@ -75,21 +72,53 @@ module.exports = (client) => {
     });
   }
 
-  // ── Step 2: Show modal ──
   async function handleOpenTicketModal(interaction) {
     const type = interaction.customId.replace('open_ticket_', '');
-    const q = MODAL_QUESTIONS[type];
-    const modal = new ModalBuilder().setCustomId(`ticket_modal_${type}`).setTitle(`Ticket ${TICKET_NAMES[type]}`);
-    const input = new TextInputBuilder().setCustomId('ticket_answer').setLabel(q.split('\n')[0]).setStyle(TextInputStyle.Paragraph).setRequired(true).setPlaceholder(q);
-    if (q.includes('\n')) input.setLabel(q.split('\n')[1] || q.split('\n')[0]);
-    modal.addComponents(new ActionRowBuilder().addComponents(input));
-    await interaction.showModal(modal);
+
+    if (type === 'support') {
+      const modal = new ModalBuilder().setCustomId('ticket_modal_support').setTitle('Ticket Support');
+      const q = new TextInputBuilder().setCustomId('ticket_answer').setLabel('Quelle est votre demande ?').setStyle(TextInputStyle.Paragraph).setRequired(true).setPlaceholder('Décrivez votre demande en détail...');
+      modal.addComponents(new ActionRowBuilder().addComponents(q));
+      return await interaction.showModal(modal);
+    }
+
+    if (type === 'commande') {
+      const modal = new ModalBuilder().setCustomId('ticket_modal_commande').setTitle('Ticket Commande');
+      const nom = new TextInputBuilder().setCustomId('ticket_nom').setLabel('Nom et Prénom').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: Jean Dupont');
+      const produits = new TextInputBuilder().setCustomId('ticket_produits').setLabel('Numéro du ou des produits').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: #1234, #5678');
+      modal.addComponents(new ActionRowBuilder().addComponents(nom), new ActionRowBuilder().addComponents(produits));
+      return await interaction.showModal(modal);
+    }
+
+    if (type === 'suivi-commandes') {
+      const modal = new ModalBuilder().setCustomId('ticket_modal_suivi-commandes').setTitle('Ticket Suivi de Commande');
+      const nom = new TextInputBuilder().setCustomId('ticket_nom').setLabel('Nom et Prénom').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: Jean Dupont');
+      const suivi = new TextInputBuilder().setCustomId('ticket_suivi').setLabel('Numéro de suivi de commande').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: COL-2024-001');
+      modal.addComponents(new ActionRowBuilder().addComponents(nom), new ActionRowBuilder().addComponents(suivi));
+      return await interaction.showModal(modal);
+    }
+
+    if (type === 'collaborations') {
+      const modal = new ModalBuilder().setCustomId('ticket_modal_collaborations').setTitle('Ticket Collaboration');
+      const nom = new TextInputBuilder().setCustomId('ticket_nom').setLabel('Nom et Prénom').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: Jean Dupont');
+      const desc = new TextInputBuilder().setCustomId('ticket_description').setLabel('Description de la demande').setStyle(TextInputStyle.Paragraph).setRequired(true).setPlaceholder('Décrivez votre demande de collaboration...');
+      modal.addComponents(new ActionRowBuilder().addComponents(nom), new ActionRowBuilder().addComponents(desc));
+      return await interaction.showModal(modal);
+    }
   }
 
-  // ── Step 3: Create ticket channel ──
+  function getAnswer(interaction, type) {
+    if (type === 'support') return interaction.fields.getTextInputValue('ticket_answer');
+    const nom = interaction.fields.getTextInputValue('ticket_nom');
+    if (type === 'commande') return `${nom}\nProduits : ${interaction.fields.getTextInputValue('ticket_produits')}`;
+    if (type === 'suivi-commandes') return `${nom}\nSuivi : ${interaction.fields.getTextInputValue('ticket_suivi')}`;
+    if (type === 'collaborations') return `${nom}\n\n${interaction.fields.getTextInputValue('ticket_description')}`;
+    return '';
+  }
+
   async function handleTicketCreation(interaction) {
     const type = interaction.customId.replace('ticket_modal_', '');
-    const answer = interaction.fields.getTextInputValue('ticket_answer');
+    const answer = getAnswer(interaction, type);
     const guild = interaction.guild;
     const categoryId = CATEGORIES[type];
     const category = guild.channels.cache.get(categoryId) || await guild.channels.fetch(categoryId).catch(() => null);
@@ -118,22 +147,18 @@ module.exports = (client) => {
 
     await interaction.reply({ content: `✅ Ticket créé : ${channel}`, ephemeral: true });
 
-    // Bot typing for 10 seconds
     const typingInterval = setInterval(() => channel.sendTyping().catch(() => {}), 5000);
     const waitMsg = await channel.send(`📝 **Création du ticket en cours...** ${interaction.user}`);
     await new Promise(r => setTimeout(r, 10000));
     clearInterval(typingInterval);
     await waitMsg.delete().catch(() => {});
 
-    // Show rules embed with reaction
     const rulesMsg = await channel.send({
       embeds: [{
         color: 0xFFFFFF,
         title: '📋 Règlement du ticket',
         description: 'Pour pouvoir échanger dans ce ticket, tu dois accepter le règlement ci-dessous en cliquant sur ✅.\n\n> ⚠️ Tout non-respect du staff peut entraîner la fermeture du ticket et des sanctions.',
-        fields: [
-          { name: '📝 Ta demande', value: answer },
-        ],
+        fields: [{ name: '📝 Ta demande', value: answer }],
         footer: { text: 'Looters Hub' },
       }],
     });
@@ -144,7 +169,6 @@ module.exports = (client) => {
       await rulesMsg.awaitReactions({ filter, max: 1, time: 300000, errors: ['time'] });
       tickets[channel.id].status = 'open';
       saveTickets();
-      // Give send messages permission to opener
       await channel.permissionOverwrites.edit(interaction.user.id, { SendMessages: true });
       await channel.send(`✅ **Règlement accepté !** ${interaction.user} peut maintenant échanger.`);
       await channel.send(`🔒 Pour demander la fermeture du ticket, clique ci-dessous.`);
@@ -160,7 +184,6 @@ module.exports = (client) => {
     }
   }
 
-  // ── Close request ──
   async function handleCloseRequest(interaction) {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('confirm_close').setLabel('✅ Confirmer').setStyle(ButtonStyle.Success),
@@ -183,17 +206,40 @@ module.exports = (client) => {
     await interaction.reply({ content: '❌ Demande annulée.', ephemeral: true });
   }
 
-  // ── Avis ticket ──
   async function handleAvisTicket(interaction) {
     if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
       return interaction.reply({ content: '❌ Réservé au staff.', ephemeral: true });
     }
-    const PUBLIC_URL = client.publicURL || 'http://localhost:' + (process.env.PORT || 3000);
+    if (!tickets[interaction.channel.id]) {
+      return interaction.reply({ content: '❌ Utilise cette commande dans un salon de ticket.', ephemeral: true });
+    }
 
+    const ticket = tickets[interaction.channel.id];
+    const members = new Set();
+    members.add(ticket.opener);
+    for (const [id, overwrite] of interaction.channel.permissionOverwrites.cache) {
+      if (overwrite.type === 1) members.add(id);
+      if (overwrite.type === 0 && ROLES[ticket.type].includes(id)) {
+        const role = interaction.guild.roles.cache.get(id);
+        if (role) role.members.forEach(m => members.add(m.id));
+      }
+    }
+
+    const options = [];
+    for (const id of members) {
+      const member = await interaction.guild.members.fetch(id).catch(() => null);
+      if (member && !member.user.bot && options.length < 25) {
+        options.push(new StringSelectMenuOptionBuilder().setLabel(member.displayName).setValue(member.id));
+      }
+    }
+
+    if (!options.length) return interaction.reply({ content: '❌ Aucun membre trouvé dans ce ticket.', ephemeral: true });
+
+    const PUBLIC_URL = client.publicURL || 'http://localhost:' + (process.env.PORT || 3000);
     const staffSelect = new StringSelectMenuBuilder()
       .setCustomId('avis_staff_select')
       .setPlaceholder('👤 Qui a pris en charge ?')
-      .addOptions(interaction.guild.members.cache.filter(m => !m.user.bot).map(m => new StringSelectMenuOptionBuilder().setLabel(m.displayName).setValue(m.id)).slice(0, 25));
+      .addOptions(options);
 
     await interaction.reply({
       embeds: [{
@@ -211,9 +257,10 @@ module.exports = (client) => {
   let avisStaffId = null;
   async function handleAvisStaffSelect(interaction) {
     avisStaffId = interaction.values[0];
+    const ticket = tickets[interaction.channel.id];
     const modal = new ModalBuilder().setCustomId('avis_modal').setTitle('✍️ Donner un avis');
     const commentInput = new TextInputBuilder().setCustomId('avis_comment').setLabel('Commentaire').setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(1000);
-    const typeInput = new TextInputBuilder().setCustomId('avis_type').setLabel('Type de ticket (support/commande/...)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('Ex: support, commande, suivi-commandes, collaborations');
+    const typeInput = new TextInputBuilder().setCustomId('avis_type').setLabel('Type de ticket').setStyle(TextInputStyle.Short).setRequired(true).setValue(ticket?.type || '').setPlaceholder('support, commande...');
     const starsInput = new TextInputBuilder().setCustomId('avis_stars').setLabel('Note (1-5)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('1, 2, 3, 4 ou 5').setMaxLength(1);
     modal.addComponents(
       new ActionRowBuilder().addComponents(commentInput),
@@ -221,7 +268,6 @@ module.exports = (client) => {
       new ActionRowBuilder().addComponents(starsInput),
     );
     await interaction.showModal(modal);
-    avisStaffId = interaction.values[0];
   }
 
   async function handleAvisSubmit(interaction) {
@@ -242,7 +288,7 @@ module.exports = (client) => {
           { name: '👤 Évalué par', value: `${interaction.user}`, inline: true },
           { name: '👨‍💼 Pris en charge par', value: staffMember ? `${staffMember}` : 'Inconnu', inline: true },
           { name: '🎫 Type de ticket', value: type, inline: true },
-          { name: '📝 Commentaire', value: comment || 'Aucun' },
+          { name: '📝 Commentaire', value: comment },
           { name: '⭐ Note', value: starStr, inline: false },
         ],
         footer: { text: 'Looters Hub' },
@@ -253,7 +299,6 @@ module.exports = (client) => {
     avisStaffId = null;
   }
 
-  // ── Fermer ticket ──
   async function handleFermerTicket(interaction) {
     if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
       return interaction.reply({ content: '❌ Réservé au staff.', ephemeral: true });
