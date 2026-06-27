@@ -250,12 +250,15 @@ module.exports = (client) => {
         footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
       }],
       components: [new ActionRowBuilder().addComponents(staffSelect)],
-      ephemeral: true,
+      ephemeral: false,
     });
   }
 
   let avisStaffId = null;
   async function handleAvisStaffSelect(interaction) {
+    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+      return interaction.reply({ content: '❌ Réservé au staff.', ephemeral: true });
+    }
     avisStaffId = interaction.values[0];
     const ticket = tickets[interaction.channel.id];
     const modal = new ModalBuilder().setCustomId('avis_modal').setTitle('✍️ Donner un avis');
