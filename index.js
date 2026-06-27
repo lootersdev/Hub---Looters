@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, REST, Routes } = require('discord.js');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -27,17 +27,30 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessageReactions,
   ],
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
 client.publicURL = PUBLIC_URL;
 
-client.once('clientReady', () => {
+client.once('clientReady', async () => {
   console.log(`✅ Connecté en tant que ${client.user.tag}`);
+
+  const guilds = client.guilds.cache;
+  for (const guild of guilds.values()) {
+    if (client.slashCommands?.length) {
+      const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+      await rest.put(Routes.applicationGuildCommands(client.user.id, guild.id), {
+        body: client.slashCommands.map(c => c.toJSON()),
+      });
+    }
+  }
 });
 
 require('./features/clear/index')(client);
 require('./features/bienvenue/index')(client);
+require('./features/reglement/index')(client);
 
 process.on('unhandledRejection', (err) => console.error('❌ Erreur :', err));
 
