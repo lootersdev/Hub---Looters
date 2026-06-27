@@ -154,7 +154,7 @@ module.exports = (client) => {
       await channel.send({ components: [closeRow] });
     } catch {
       await channel.send('⏰ Temps écoulé. Le ticket va être fermé.');
-      setTimeout(() => channel.delete().catch(() => {}), 5000);
+      await channel.delete().catch(() => {});
       delete tickets[channel.id];
       saveTickets();
     }
@@ -174,7 +174,7 @@ module.exports = (client) => {
       return interaction.reply({ content: '❌ Seuls les fondateurs peuvent fermer ce ticket.', ephemeral: true });
     }
     await interaction.channel.send('🔒 **Ticket fermé.**');
-    setTimeout(() => interaction.channel.delete().catch(() => {}), 3000);
+    await interaction.channel.delete().catch(() => {});
     delete tickets[interaction.channel.id];
     saveTickets();
   }
@@ -261,8 +261,8 @@ module.exports = (client) => {
     if (!tickets[interaction.channel.id]) {
       return interaction.reply({ content: '❌ Ce salon n\'est pas un ticket.', ephemeral: true });
     }
-    await interaction.reply('🔒 **Fermeture du ticket dans 3 secondes...**');
-    setTimeout(() => interaction.channel.delete().catch(() => {}), 3000);
+    await interaction.reply('🔒 **Ticket fermé.**');
+    await interaction.channel.delete().catch(() => {});
     delete tickets[interaction.channel.id];
     saveTickets();
   }
