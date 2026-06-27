@@ -92,8 +92,11 @@ module.exports = (client) => {
     const answer = interaction.fields.getTextInputValue('ticket_answer');
     const guild = interaction.guild;
     const categoryId = CATEGORIES[type];
-    const category = guild.channels.cache.get(categoryId);
-    if (!category) return interaction.reply({ content: '❌ Catégorie introuvable.', ephemeral: true });
+    const category = guild.channels.cache.get(categoryId) || await guild.channels.fetch(categoryId).catch(() => null);
+    if (!category) {
+      const available = guild.channels.cache.filter(c => c.type === ChannelType.GuildCategory).map(c => `  - ${c.name} (${c.id})`).join('\n');
+      return interaction.reply({ content: `❌ Catégorie \`${categoryId}\` introuvable.\nCatégories disponibles :\n${available || 'Aucune'}`, ephemeral: true });
+    }
 
     const channelName = `${type}-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
     const everyoneRole = guild.roles.everyone;
