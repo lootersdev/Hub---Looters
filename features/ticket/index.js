@@ -12,6 +12,8 @@ function saveTickets() { fs.writeFileSync(DATA_FILE, JSON.stringify(tickets)); }
 function isStaff(member) {
   return member.permissions.has(PermissionFlagsBits.Administrator) || member.roles.cache.some(r => STAFF_ROLES.includes(r.id));
 }
+
+async function sendLog(guild, ticket, closedBy) {
   const channel = guild.channels.cache.get(LOG_CHANNEL) || await guild.channels.fetch(LOG_CHANNEL).catch(() => null);
   if (!channel) return;
   await channel.send({
