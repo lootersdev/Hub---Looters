@@ -4,8 +4,28 @@ const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Modal
 const { CATEGORIES, ROLES, TICKET_NAMES, REVIEW_CHANNEL } = require('./config');
 
 const DATA_FILE = path.join(__dirname, 'tickets.json');
+const LOG_CHANNEL = '1520249809267855521';
 const tickets = (() => { try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { return {}; } })();
 function saveTickets() { fs.writeFileSync(DATA_FILE, JSON.stringify(tickets)); }
+
+async function sendLog(guild, ticket, closedBy) {
+  const channel = guild.channels.cache.get(LOG_CHANNEL) || await guild.channels.fetch(LOG_CHANNEL).catch(() => null);
+  if (!channel) return;
+  await channel.send({
+    embeds: [{
+      color: 0xFF0000,
+      title: '🔒 Ticket fermé',
+      fields: [
+        { name: '🎫 Type', value: TICKET_NAMES[ticket?.type] || ticket?.type || 'Inconnu', inline: true },
+        { name: '👤 Ouvert par', value: ticket?.opener ? `<@${ticket.opener}>` : 'Inconnu', inline: true },
+        { name: '🔐 Fermé par', value: `${closedBy}`, inline: true },
+        { name: '📝 Demande', value: ticket?.answer || 'Aucune' },
+      ],
+      timestamp: new Date(),
+      footer: { text: 'Looters Hub' },
+    }],
+  });
+}
 
 function getTicketType(cmd) {
   if (cmd === 'support') return 'support';
@@ -178,6 +198,7 @@ module.exports = (client) => {
       await channel.send({ components: [closeRow] });
     } catch {
       await channel.send('⏰ Temps écoulé. Le ticket va être fermé.');
+      await sendLog(interaction.guild, tickets[channel.id], interaction.user);
       await channel.delete().catch(() => {});
       delete tickets[channel.id];
       saveTickets();
@@ -197,6 +218,7 @@ module.exports = (client) => {
       return interaction.reply({ content: '❌ Seuls les fondateurs peuvent fermer ce ticket.', ephemeral: true });
     }
     await interaction.channel.send('🔒 **Ticket fermé.**');
+    await sendLog(interaction.guild, tickets[interaction.channel.id], interaction.user);
     await interaction.channel.delete().catch(() => {});
     delete tickets[interaction.channel.id];
     saveTickets();
@@ -310,6 +332,7 @@ module.exports = (client) => {
       return interaction.reply({ content: '❌ Ce salon n\'est pas un ticket.', ephemeral: true });
     }
     await interaction.reply('🔒 **Ticket fermé.**');
+    await sendLog(interaction.guild, tickets[interaction.channel.id], interaction.user);
     await interaction.channel.delete().catch(() => {});
     delete tickets[interaction.channel.id];
     saveTickets();
