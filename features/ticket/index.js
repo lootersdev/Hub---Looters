@@ -71,7 +71,7 @@ module.exports = (client) => {
         footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
       }],
       components: [row],
-      ephemeral: true,
+      ephemeral: false,
     });
   }
 

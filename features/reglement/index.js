@@ -1,26 +1,12 @@
-const fs = require('fs');
-const path = require('path');
 const { SlashCommandBuilder } = require('discord.js');
 
 const REGLEMENT_CHANNEL = '1515832971071066145';
 const REGLEMENT_ROLE = '1515835957713043557';
 const REGLEMENT_EMOJI = '✅';
-const DATA_FILE = path.join(__dirname, 'data.json');
-
-function loadData() {
-  try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-  } catch {
-    return {};
-  }
-}
-
-function saveData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data));
-}
 
 module.exports = (client) => {
-  // Slash command definition
+  let rulesMessageId = null;
+
   client.slashCommands = client.slashCommands || [];
   client.slashCommands.push(
     new SlashCommandBuilder()
@@ -28,15 +14,34 @@ module.exports = (client) => {
       .setDescription('Envoie le message de règlement avec réaction rôle')
   );
 
+  // Find existing rules message on startup
+  async function findExistingMessage(guildId) {
+    const guild = client.guilds.cache.get(guildId) || client.guilds.cache.find(g => g.channels.cache.has(REGLEMENT_CHANNEL));
+    if (!guild) return;
+    const channel = guild.channels.cache.get(REGLEMENT_CHANNEL);
+    if (!channel) return;
+    try {
+      const messages = await channel.messages.fetch({ limit: 20 });
+      const botMsg = messages.find(m => m.author.id === client.user.id && m.reactions.cache.has(REGLEMENT_EMOJI));
+      if (botMsg) rulesMessageId = botMsg.id;
+    } catch {}
+  }
+
+  client.once('clientReady', async () => {
+    for (const guild of client.guilds.cache.values()) {
+      await findExistingMessage(guild.id);
+    }
+  });
+
   client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand() || interaction.commandName !== 'reglement') return;
 
     const channel = interaction.guild.channels.cache.get(REGLEMENT_CHANNEL);
     if (!channel) return interaction.reply({ content: '❌ Salon règlement introuvable.', ephemeral: true });
 
-    const existingId = loadData().messageId;
-    if (existingId) {
-      const old = await channel.messages.fetch(existingId).catch(() => null);
+    // Delete old message
+    if (rulesMessageId) {
+      const old = await channel.messages.fetch(rulesMessageId).catch(() => null);
       if (old) await old.delete().catch(() => {});
     }
 
@@ -48,14 +53,14 @@ module.exports = (client) => {
       }],
     });
     await msg.react(REGLEMENT_EMOJI);
-    saveData({ messageId: msg.id });
+    rulesMessageId = msg.id;
     await interaction.reply({ content: '✅ Message de règlement envoyé !', ephemeral: true });
   });
 
   client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
     if (reaction.partial) await reaction.fetch();
-    if (reaction.message.id !== loadData().messageId) return;
+    if (reaction.message.id !== rulesMessageId) return;
     if (reaction.emoji.name !== REGLEMENT_EMOJI) return;
     const member = reaction.message.guild.members.cache.get(user.id);
     if (member) await member.roles.add(REGLEMENT_ROLE);
@@ -64,7 +69,7 @@ module.exports = (client) => {
   client.on('messageReactionRemove', async (reaction, user) => {
     if (user.bot) return;
     if (reaction.partial) await reaction.fetch();
-    if (reaction.message.id !== loadData().messageId) return;
+    if (reaction.message.id !== rulesMessageId) return;
     if (reaction.emoji.name !== REGLEMENT_EMOJI) return;
     const member = reaction.message.guild.members.cache.get(user.id);
     if (member) await member.roles.remove(REGLEMENT_ROLE);
