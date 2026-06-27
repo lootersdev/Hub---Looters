@@ -69,10 +69,8 @@ module.exports = (client) => {
     }
     if (interaction.isModalSubmit()) {
       if (interaction.customId.startsWith('ticket_modal_')) return handleTicketCreation(interaction);
-      if (interaction.customId === 'avis_modal') return handleAvisSubmit(interaction);
     }
     if (interaction.isStringSelectMenu()) {
-      if (interaction.customId === 'avis_staff_select') return handleAvisStaffSelect(interaction);
     }
   });
 
@@ -231,6 +229,7 @@ module.exports = (client) => {
     await interaction.reply({ content: '❌ Demande annulée.', ephemeral: true });
   }
 
+  // ── Avis ticket (staff déclenche, membre répond) ──
   async function handleAvisTicket(interaction) {
     if (!isStaff(interaction.member)) {
       return interaction.reply({ content: '❌ Réservé au staff.', ephemeral: true });
@@ -240,11 +239,37 @@ module.exports = (client) => {
     }
 
     const ticket = tickets[interaction.channel.id];
+    const PUBLIC_URL = client.publicURL || 'http://localhost:' + (process.env.PORT || 3000);
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('avis_open').setLabel('⭐ Donner mon avis').setStyle(ButtonStyle.Primary)
+    );
+
+    await interaction.reply({
+      content: `<@${ticket.opener}> Le staff souhaite connaître votre avis sur ce ticket. Cliquez sur le bouton ci-dessous pour répondre !`,
+      embeds: [{
+        color: 0xFFFFFF,
+        title: '⭐ Avis sur le ticket',
+        image: { url: `${PUBLIC_URL}/umbed-avis-ticket.png` },
+        footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
+      }],
+      components: [row],
+    });
+  }
+
+  // ── Le membre clique sur le bouton d'avis ──
+  client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isButton() || interaction.customId !== 'avis_open') return;
+    const ticket = tickets[interaction.channel.id];
+    if (!ticket || interaction.user.id !== ticket.opener) {
+      return interaction.reply({ content: '❌ Seul l\'ouvreur du ticket peut donner son avis.', ephemeral: true });
+    }
+
     const members = new Set();
     members.add(ticket.opener);
     for (const [id, overwrite] of interaction.channel.permissionOverwrites.cache) {
       if (overwrite.type === 1) members.add(id);
-      if (overwrite.type === 0 && ROLES[ticket.type].includes(id)) {
+      if (overwrite.type === 0 && ROLES[ticket.type]?.includes(id)) {
         const role = interaction.guild.roles.cache.get(id);
         if (role) role.members.forEach(m => members.add(m.id));
       }
@@ -257,52 +282,34 @@ module.exports = (client) => {
         options.push(new StringSelectMenuOptionBuilder().setLabel(member.displayName).setValue(member.id));
       }
     }
+    if (!options.length) return interaction.reply({ content: '❌ Aucun membre à évaluer.', ephemeral: true });
 
-    if (!options.length) return interaction.reply({ content: '❌ Aucun membre trouvé dans ce ticket.', ephemeral: true });
-
-    const PUBLIC_URL = client.publicURL || 'http://localhost:' + (process.env.PORT || 3000);
     const staffSelect = new StringSelectMenuBuilder()
       .setCustomId('avis_staff_select')
-      .setPlaceholder('👤 Qui a pris en charge ?')
+      .setPlaceholder('👤 Qui vous a pris en charge ?')
       .addOptions(options);
+    await interaction.reply({ components: [new ActionRowBuilder().addComponents(staffSelect)], ephemeral: true });
+  });
 
-    await interaction.reply({
-      embeds: [{
-        color: 0xFFFFFF,
-        title: '⭐ Avis sur le ticket',
-        description: 'Sélectionne le membre de l\'équipe qui a pris en charge, puis remplis le formulaire.',
-        image: { url: `${PUBLIC_URL}/umbed-avis-ticket.png` },
-        footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
-      }],
-      components: [new ActionRowBuilder().addComponents(staffSelect)],
-      ephemeral: false,
-    });
-  }
-
+  // ── Sélection du staff et modal ──
   let avisStaffId = null;
-  async function handleAvisStaffSelect(interaction) {
-    if (!isStaff(interaction.member)) {
-      return interaction.reply({ content: '❌ Réservé au staff.', ephemeral: true });
-    }
+  client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isStringSelectMenu() || interaction.customId !== 'avis_staff_select') return;
     avisStaffId = interaction.values[0];
-    const ticket = tickets[interaction.channel.id];
-    const modal = new ModalBuilder().setCustomId('avis_modal').setTitle('✍️ Donner un avis');
-    const commentInput = new TextInputBuilder().setCustomId('avis_comment').setLabel('Commentaire').setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(1000);
-    const typeInput = new TextInputBuilder().setCustomId('avis_type').setLabel('Type de ticket').setStyle(TextInputStyle.Short).setRequired(true).setValue(ticket?.type || '').setPlaceholder('support, commande...');
-    const starsInput = new TextInputBuilder().setCustomId('avis_stars').setLabel('Note (1-5)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('1, 2, 3, 4 ou 5').setMaxLength(1);
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(commentInput),
-      new ActionRowBuilder().addComponents(typeInput),
-      new ActionRowBuilder().addComponents(starsInput),
-    );
+    const modal = new ModalBuilder().setCustomId('avis_modal').setTitle('⭐ Votre avis');
+    const commentInput = new TextInputBuilder().setCustomId('avis_comment').setLabel('Commentaire').setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(1000).setPlaceholder('Partagez votre expérience...');
+    const starsInput = new TextInputBuilder().setCustomId('avis_stars').setLabel('Note (1 à 5)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('1, 2, 3, 4 ou 5').setMaxLength(1);
+    modal.addComponents(new ActionRowBuilder().addComponents(commentInput), new ActionRowBuilder().addComponents(starsInput));
     await interaction.showModal(modal);
-  }
+  });
 
-  async function handleAvisSubmit(interaction) {
+  // ── Soumission de l'avis ──
+  client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isModalSubmit() || interaction.customId !== 'avis_modal') return;
     const comment = interaction.fields.getTextInputValue('avis_comment') || 'Aucun commentaire';
-    const type = interaction.fields.getTextInputValue('avis_type');
     const stars = Math.min(5, Math.max(1, parseInt(interaction.fields.getTextInputValue('avis_stars')) || 5));
     const staffMember = await interaction.guild.members.fetch(avisStaffId).catch(() => null);
+    const ticket = tickets[interaction.channel.id];
 
     const channel = interaction.guild.channels.cache.get(REVIEW_CHANNEL);
     if (!channel) return interaction.reply({ content: '❌ Salon d\'avis introuvable.', ephemeral: true });
@@ -315,7 +322,7 @@ module.exports = (client) => {
         fields: [
           { name: '👤 Évalué par', value: `${interaction.user}`, inline: true },
           { name: '👨‍💼 Pris en charge par', value: staffMember ? `${staffMember}` : 'Inconnu', inline: true },
-          { name: '🎫 Type de ticket', value: type, inline: true },
+          { name: '🎫 Type de ticket', value: TICKET_NAMES[ticket?.type] || ticket?.type || 'Inconnu', inline: true },
           { name: '📝 Commentaire', value: comment },
           { name: '⭐ Note', value: starStr, inline: false },
         ],
@@ -323,9 +330,9 @@ module.exports = (client) => {
       }],
     });
 
-    await interaction.reply({ content: '✅ Avis envoyé avec succès !', ephemeral: true });
+    await interaction.reply({ content: '✅ Merci pour votre avis !', ephemeral: true });
     avisStaffId = null;
-  }
+  });
 
   async function handleFermerTicket(interaction) {
     if (!isStaff(interaction.member)) {
