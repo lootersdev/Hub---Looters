@@ -45,7 +45,7 @@ module.exports = (client) => {
         title: '🌍 Site Web Looters',
         url: 'https://looters.fr',
         description: `**Statut :** ${status}\n\nClique sur le bouton ci-dessous pour visiter notre site officiel !`,
-        image: { url: `${PUBLIC_URL}/siteweb.png` },
+        image: { url: `${PUBLIC_URL}/umbed-siteweb.png` },
         footer: { text: 'Looters Hub', iconURL: `${PUBLIC_URL}/logo.png` },
       }],
       components: [row],
