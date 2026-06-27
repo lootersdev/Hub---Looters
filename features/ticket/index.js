@@ -5,10 +5,13 @@ const { CATEGORIES, ROLES, TICKET_NAMES, REVIEW_CHANNEL } = require('./config');
 
 const DATA_FILE = path.join(__dirname, 'tickets.json');
 const LOG_CHANNEL = '1520249809267855521';
+const STAFF_ROLES = [...new Set(Object.values(ROLES).flat())];
 const tickets = (() => { try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { return {}; } })();
 function saveTickets() { fs.writeFileSync(DATA_FILE, JSON.stringify(tickets)); }
 
-async function sendLog(guild, ticket, closedBy) {
+function isStaff(member) {
+  return member.permissions.has(PermissionFlagsBits.Administrator) || member.roles.cache.some(r => STAFF_ROLES.includes(r.id));
+}
   const channel = guild.channels.cache.get(LOG_CHANNEL) || await guild.channels.fetch(LOG_CHANNEL).catch(() => null);
   if (!channel) return;
   await channel.send({
@@ -214,7 +217,7 @@ module.exports = (client) => {
   }
 
   async function handleConfirmClose(interaction) {
-    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+    if (!isStaff(interaction.member)) {
       return interaction.reply({ content: '❌ Seuls les fondateurs peuvent fermer ce ticket.', ephemeral: true });
     }
     await interaction.channel.send('🔒 **Ticket fermé.**');
@@ -229,7 +232,7 @@ module.exports = (client) => {
   }
 
   async function handleAvisTicket(interaction) {
-    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+    if (!isStaff(interaction.member)) {
       return interaction.reply({ content: '❌ Réservé au staff.', ephemeral: true });
     }
     if (!tickets[interaction.channel.id]) {
@@ -278,7 +281,7 @@ module.exports = (client) => {
 
   let avisStaffId = null;
   async function handleAvisStaffSelect(interaction) {
-    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+    if (!isStaff(interaction.member)) {
       return interaction.reply({ content: '❌ Réservé au staff.', ephemeral: true });
     }
     avisStaffId = interaction.values[0];
@@ -325,7 +328,7 @@ module.exports = (client) => {
   }
 
   async function handleFermerTicket(interaction) {
-    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+    if (!isStaff(interaction.member)) {
       return interaction.reply({ content: '❌ Réservé au staff.', ephemeral: true });
     }
     if (!tickets[interaction.channel.id]) {
