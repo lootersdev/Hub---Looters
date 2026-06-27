@@ -45,7 +45,7 @@ module.exports = (client) => {
       embeds: [{
         color: 0xFFFFFF,
         description: `Tu es le **${count}e membre** à rejoindre Looters ! 🎉`,
-        image: { url: `${PUBLIC_URL}/umbed.png` },
+        image: { url: `${PUBLIC_URL}/umbed-bienvenue.png` },
         fields: [
           { name: '📅 Compte créé', value: createdAt, inline: true },
           { name: '👥 Membres', value: `${member.guild.memberCount}`, inline: true },
